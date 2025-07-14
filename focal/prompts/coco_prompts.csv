@@ -1,0 +1,81 @@
+prompt,classname,classidx
+a photo of a person.,person,0
+a photo of a bicycle.,bicycle,1
+a photo of a car.,car,2
+a photo of a motorcycle.,motorcycle,3
+a photo of a airplane.,airplane,4
+a photo of a bus.,bus,5
+a photo of a train.,train,6
+a photo of a truck.,truck,7
+a photo of a boat.,boat,8
+a photo of a traffic light.,traffic light,9
+a photo of a fire hydrant.,fire hydrant,10
+a photo of a stop sign.,stop sign,12
+a photo of a parking meter.,parking meter,13
+a photo of a bench.,bench,14
+a photo of a bird.,bird,15
+a photo of a cat.,cat,16
+a photo of a dog.,dog,17
+a photo of a horse.,horse,18
+a photo of a sheep.,sheep,19
+a photo of a cow.,cow,20
+a photo of a elephant.,elephant,21
+a photo of a bear.,bear,22
+a photo of a zebra.,zebra,23
+a photo of a giraffe.,giraffe,24
+a photo of a backpack.,backpack,26
+a photo of a umbrella.,umbrella,27
+a photo of a handbag.,handbag,30
+a photo of a tie.,tie,31
+a photo of a suitcase.,suitcase,32
+a photo of a frisbee.,frisbee,33
+a photo of a skis.,skis,34
+a photo of a snowboard.,snowboard,35
+a photo of a sports ball.,sports ball,36
+a photo of a kite.,kite,37
+a photo of a baseball bat.,baseball bat,38
+a photo of a baseball glove.,baseball glove,39
+a photo of a skateboard.,skateboard,40
+a photo of a surfboard.,surfboard,41
+a photo of a tennis racket.,tennis racket,42
+a photo of a bottle.,bottle,43
+a photo of a wine glass.,wine glass,45
+a photo of a cup.,cup,46
+a photo of a fork.,fork,47
+a photo of a knife.,knife,48
+a photo of a spoon.,spoon,49
+a photo of a bowl.,bowl,50
+a photo of a banana.,banana,51
+a photo of a apple.,apple,52
+a photo of a sandwich.,sandwich,53
+a photo of a orange.,orange,54
+a photo of a broccoli.,broccoli,55
+a photo of a carrot.,carrot,56
+a photo of a hot dog.,hot dog,57
+a photo of a pizza.,pizza,58
+a photo of a donut.,donut,59
+a photo of a cake.,cake,60
+a photo of a chair.,chair,61
+a photo of a couch.,couch,62
+a photo of a potted plant.,potted plant,63
+a photo of a bed.,bed,64
+a photo of a dining table.,dining table,66
+a photo of a toilet.,toilet,69
+a photo of a tv.,tv,71
+a photo of a laptop.,laptop,72
+a photo of a mouse.,mouse,73
+a photo of a remote.,remote,74
+a photo of a keyboard.,keyboard,75
+a photo of a cell phone.,cell phone,76
+a photo of a microwave.,microwave,77
+a photo of a oven.,oven,78
+a photo of a toaster.,toaster,79
+a photo of a sink.,sink,80
+a photo of a refrigerator.,refrigerator,81
+a photo of a book.,book,83
+a photo of a clock.,clock,84
+a photo of a vase.,vase,85
+a photo of a scissors.,scissors,86
+a photo of a teddy bear.,teddy bear,87
+a photo of a hair drier.,hair drier,88
+a photo of a toothbrush.,toothbrush,89
