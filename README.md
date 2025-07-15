@@ -14,11 +14,6 @@ This is the official repository for the paper "Test-Time Canonicalization by Fou
 python -m experiments.rotation_2D # Replace `rotation_2D` with the name of the task you want to run.
 ```
 
-## TODO:
-- 3D Viewpoint shift code
-- Upload checkpoints for the pre-trained models
-- Code to make plots from saved results
-
 ## Installation
 The recommended way to install the code is using [uv](https://github.com/astral-sh/uv) package manager, however, we also provide a `requirements.txt` file for pip users.
 
@@ -57,3 +52,8 @@ unzip models.zip -d pretrained
 wget http://storage.googleapis.com/gresearch/refraw360/360_v2.zip
 unzip 360_v2.zip -d data
 ```
+
+## TODO:
+- 3D Viewpoint shift code
+- Upload checkpoints for the pre-trained models
+- Code to make plots from saved results
