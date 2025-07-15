@@ -1,5 +1,6 @@
 # FoCal: Test-Time Canonicalization by Foundation Models for Robust Perception
 
+### [Paper](https://arxiv.org/abs/2507.10375) | [Project Website](https://utkarsh.ai/projects/focal)
 
 This is the official repository for the paper "Test-Time Canonicalization by Foundation Models for Robust Perception" (ICML 2025).
 
