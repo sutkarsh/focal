@@ -1,8 +1,12 @@
 # FoCal: Test-Time Canonicalization by Foundation Models for Robust Perception
 
-### [Paper](https://arxiv.org/abs/2507.10375) | [Project Website](https://utkarsh.ai/projects/focal)
+[![arXiv](https://img.shields.io/badge/arXiv-2507.10375-b31b1b.svg)](https://arxiv.org/abs/2507.10375)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 
 This is the official repository for the paper "Test-Time Canonicalization by Foundation Models for Robust Perception" (ICML 2025).
+
+### [Paper](https://arxiv.org/abs/2507.10375) | [Project Website](https://utkarsh.ai/projects/focal)
 
 ## Basic organization:
 - Each task is a python script of its own (in `experiments/` folder)
@@ -52,8 +56,3 @@ unzip models.zip -d pretrained
 wget http://storage.googleapis.com/gresearch/refraw360/360_v2.zip
 unzip 360_v2.zip -d data
 ```
-
-## TODO:
-- 3D Viewpoint shift code
-- Upload checkpoints for the pre-trained models
-- Code to make plots from saved results
