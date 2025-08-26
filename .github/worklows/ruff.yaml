@@ -1,0 +1,29 @@
+name: Ruff
+
+on:
+  push:
+    paths: ["**.py", "pyproject.toml"]
+  pull_request:
+    paths: ["**.py", "pyproject.toml"]
+
+jobs:
+  ruff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Use Python so we can pip-install the latest Ruff quickly.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Ruff
+        run: python -m pip install --upgrade ruff
+
+      # Lint (with GitHub annotations in PRs)
+      - name: Ruff check
+        run: ruff check --output-format=github .
+
+      # Enforce formatting is already correct (Black-compatible style)
+      - name: Ruff format (check only)
+        run: ruff format --check .
