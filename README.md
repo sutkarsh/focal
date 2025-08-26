@@ -62,3 +62,25 @@ unzip models.zip -d pretrained
 wget http://storage.googleapis.com/gresearch/refraw360/360_v2.zip
 unzip 360_v2.zip -d data
 ```
+
+## How to cite
+
+If you find this code useful in your research, please cite this paper:
+
+```bibtex
+@inproceedings{
+    singhal2025testtime,
+    title={Test-Time Canonicalization by Foundation Models for Robust Perception},
+    author={Utkarsh Singhal and Ryan Feng and Stella X. Yu and Atul Prakash},
+    booktitle={Forty-second International Conference on Machine Learning},
+    year={2025},
+    url={https://openreview.net/forum?id=JMZ7mr19AK}
+}
+```
+
+## Code Contributions
+
+This repo has been created and is maintained by
+
+- [Utkarsh Singhal](https://utkarsh.ai)
+- [Ryan Feng](https://websites.umich.edu/~rtfeng/)
