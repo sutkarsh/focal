@@ -3,6 +3,7 @@
 [![arXiv](https://img.shields.io/badge/arXiv-2507.10375-b31b1b.svg)](https://arxiv.org/abs/2507.10375)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![pytorch](https://img.shields.io/badge/PyTorch2.4+-ee4c2c?logo=pytorch&logoColor=white)
 
 This is the official repository for the paper "Test-Time Canonicalization by Foundation Models for Robust Perception" (ICML 2025).
 
