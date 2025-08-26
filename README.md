@@ -9,6 +9,8 @@ This is the official repository for the paper "Test-Time Canonicalization by Fou
 
 ### [Paper](https://arxiv.org/abs/2507.10375) | [Project Website](https://utkarsh.ai/projects/focal)
 
+![FoCal](media/focal_teaser.png)
+
 ## Basic organization:
 - Each task is a python script of its own (in `experiments/` folder)
 - Each python file imports from `focal/utils`, which contain most of the dependencies and library code.
