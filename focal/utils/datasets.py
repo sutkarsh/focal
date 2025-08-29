@@ -159,7 +159,6 @@ class DayNightDataset(torch.utils.data.Dataset):
     def __init__(
         self, dataset_dir="/home/utkarsh/urbanir/results_valid", transform=None
     ):
-
         self.dataset_dir = dataset_dir
         self.transform = transform
         self.day_files = sorted(glob.glob(f"{dataset_dir}/day/*.png"))
