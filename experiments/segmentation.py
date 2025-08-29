@@ -7,7 +7,7 @@ evaluating model performance under various rotation conditions.
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Literal, Tuple
+from typing import Any, Dict, List, Literal
 
 import numpy as np
 import torch

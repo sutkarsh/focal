@@ -159,7 +159,6 @@ class DayNightDataset(torch.utils.data.Dataset):
     def __init__(
         self, dataset_dir="/home/utkarsh/urbanir/results_valid", transform=None
     ):
-        import glob
 
         self.dataset_dir = dataset_dir
         self.transform = transform

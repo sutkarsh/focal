@@ -6,7 +6,6 @@ This method simply avoids the need to install equiadapt as a dependency.
 
 from typing import Dict, List, Tuple
 
-import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F

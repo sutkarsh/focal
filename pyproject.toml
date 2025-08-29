@@ -46,3 +46,6 @@ include = ["focal", "focal*"]
 dev = [
     "focal",
 ]
+
+[tool.ruff]
+lint.ignore = ["F402", "E402"]
