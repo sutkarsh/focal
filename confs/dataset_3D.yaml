@@ -1,0 +1,17 @@
+objaverse:
+  dataset_root: "datasets/objaverse/objaverse_lvis_renders_offset_10_original"
+  # settings outlined in the objaverse processing script. Views set to every 30 degrees el az in the upper
+  # viewing hemisphere, offset by 10 degrees to avoid straight on views, with radius 2.2
+  el_min: 10
+  el_max: 71
+  el_step: 30
+  az_min: 10
+  az_max: 341
+  az_step: 30
+  radius: 2.2
+
+co3d:
+  dataset_root: "datasets/co3d/co3d_filtered_[thresh]"
+  input_file: "datasets/co3d/co3d_filtered_[thresh]_input_paths.txt"
+  json_file: "datasets/co3d/jsons/co3d_filtered_[thresh].json"
+  class_file: "focal/utils/co3d_classes.txt"

@@ -15,7 +15,9 @@ contourpy==1.3.1
 cycler==0.12.1
 diffusers==0.29.2
 docstring-parser==0.16
+dotenv==0.9.9
 e2cnn==0.2.3
+einops==0.8.1
 equiadapt==0.1.2
 filelock==3.16.1
 fonttools==4.55.3
@@ -55,8 +57,10 @@ nvidia-cusparse-cu12==12.1.0.106 ; platform_machine == 'x86_64' and sys_platform
 nvidia-nccl-cu12==2.20.5 ; platform_machine == 'x86_64' and sys_platform == 'linux'
 nvidia-nvjitlink-cu12==12.6.85 ; platform_machine == 'x86_64' and sys_platform == 'linux'
 nvidia-nvtx-cu12==12.1.105 ; platform_machine == 'x86_64' and sys_platform == 'linux'
+objaverse==0.1.7
 omegaconf==2.3.0
 open-clip-torch==2.30.0
+openai==1.60.2
 opencv-python==4.12.0.88
 packaging==24.2
 pandas==2.2.3
@@ -95,6 +99,7 @@ typing-extensions==4.12.2
 tyro==0.8.10
 tzdata==2024.2
 urllib3==2.3.0
+wandb==0.19.11
 wcwidth==0.2.13
 xformers==0.0.28.post1
 yarl==1.18.3

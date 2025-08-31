@@ -63,6 +63,36 @@ wget http://storage.googleapis.com/gresearch/refraw360/360_v2.zip
 unzip 360_v2.zip -d data
 ```
 
+### 3D Viewpoints
+In order to run 3D viewpoint experiments, you need to install detectron2 and TRELLIS. You also need to download and install patches for [Objaverse](https://github.com/allenai/objaverse-xl/tree/main), [TRELLIS](https://github.com/microsoft/TRELLIS.git), and [OVSeg](https://github.com/facebookresearch/ov-seg/tree/main) as part of the process in `scripts/download_3D_libraries.sh`:
+
+```
+conda create -n focal_3d python=3.10
+conda activate focal_3d
+pip install -r requirements.txt
+./scripts/download_3D_libraries.sh
+```
+
+The OVSeg checkpoint also needs to be downloaded from their Google Drive: [https://drive.google.com/file/d/1cn-ohxgXDrDfkzC1QdO-fi8IjbjXmgKy/view](https://drive.google.com/file/d/1cn-ohxgXDrDfkzC1QdO-fi8IjbjXmgKy/view). Place it at: `./third_party/ovseg/ovseg_swinbase_vitL14_ft_mpt.pth`.
+
+CO3D data would also have to be donwloaded from `https://ai.meta.com/datasets/co3d-downloads/` to run on CO3D. Structure should be: `datasets/co3d/orig/<class>/<uid>` when done.
+
+For both Objaverse and CO3D, the datasets need to be filtered. Note that for CO3D, you need to export an OpenAI key, and for Objaverse, you have to install Blender and start the xserver as described in their repo ([https://github.com/allenai/objaverse-rendering](https://github.com/allenai/objaverse-rendering)):
+```
+python3 -m scripts.viewpoint_3D_process_objaverse
+export OPENAI_API_KEY="<your key>"
+python3 -m scripts.viewpoint_3D_process_co3d
+```
+
+To run the experiments after filtering:
+```
+python3 -m experiments.viewpoint_3D --mode rank --canon_2d_pattern 0 --dataset objaverse
+python3 -m experiments.viewpoint_3D --mode gt_prob --canon_2d_pattern 5 --dataset objaverse
+python3 -m experiments.viewpoint_3D --mode gt_prob --canon_2d_pattern 5 --dataset co3d 
+```
+
+Note that we ship modified copies of a few libraries in `third_party_modified` along with their appropriate licenses. We replaced the `README` in each sub-folder with a new one that discloses the changes made.
+
 ## How to cite
 
 If you find this code useful in your research, please cite this paper:

@@ -2,6 +2,8 @@
 
 from typing import List, Tuple
 
+from PIL import Image
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torchvision
@@ -389,3 +391,61 @@ class PRLC_ViTB:
         im = self.transform(im).to(self.device)
         with torch.inference_mode():
             return self.model(im).cpu()
+
+
+class _OVSEGArgs:
+    """Helper class for OVSEG args"""
+
+    def __init__(self, config_file: str, opts: List[str]) -> None:
+        """Initialize _OVSEGArgs."""
+        self.config_file = config_file
+        self.opts = opts
+
+
+class OVSEGClassifier:
+    """OVSEG CLIP-based image classifier."""
+
+    def setup_cfg(self, args: _OVSEGArgs):
+        from detectron2.config import get_cfg
+        from detectron2.projects.deeplab import add_deeplab_config
+        from third_party_modified.ovseg.open_vocab_seg import add_ovseg_config
+
+        # from OVSEG's demo.py
+        # load config from file and command-line arguments
+        cfg = get_cfg()
+        # for poly lr schedule
+        add_deeplab_config(cfg)
+        add_ovseg_config(cfg)
+        cfg.merge_from_file(args.config_file)
+        cfg.merge_from_list(args.opts)
+        cfg.freeze()
+        return cfg
+
+    def __init__(self, config_file: str, opts: List[str], *args, **kwargs) -> None:
+        """Initialize OVSEG CLIP classifier.
+
+        Args:
+            config_file: Path to OVSEG config file
+            opts: Additional options (e.g., model weights)
+            *args: Additional positional arguments (unused)
+            **kwargs: Additional keyword arguments (unused)
+        """
+        from third_party_modified.ovseg.open_vocab_seg.utils import VisualizationDemo
+
+        args = _OVSEGArgs(config_file, opts)
+        cfg = self.setup_cfg(args)
+        self._model = VisualizationDemo(cfg)
+
+    def __call__(self, im: Image.Image, classes: List[str]) -> torch.Tensor:
+        """Classify input image.
+
+        Args:
+            im: Input image (PIL), RGB
+            classes: List of class names
+
+        Returns:
+            Classification logits
+        """
+        im = np.asarray(im)
+        im = im[:, :, ::-1]  # ov-seg expects BGR
+        return self._model.get_classification_clip(im, classes)[0]

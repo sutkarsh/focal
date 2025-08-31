@@ -1,0 +1,88 @@
+From 259dc19424850d717db261804c28ccd332d720ed Mon Sep 17 00:00:00 2001
+From: Ryan Feng <rtfeng@umich.edu>
+Date: Sun, 31 Aug 2025 00:43:58 -0400
+Subject: [PATCH] focal patch
+
+---
+ .../models/structured_latent_vae/__init__.py  |  2 +-
+ trellis/pipelines/base.py                     |  1 +
+ trellis/pipelines/trellis_image_to_3d.py      | 35 +++++++++++++++----
+ 3 files changed, 31 insertions(+), 7 deletions(-)
+
+diff --git a/trellis/models/structured_latent_vae/__init__.py b/trellis/models/structured_latent_vae/__init__.py
+index 75603bc..e5b9d78 100644
+--- a/trellis/models/structured_latent_vae/__init__.py
++++ b/trellis/models/structured_latent_vae/__init__.py
+@@ -1,4 +1,4 @@
+ from .encoder import SLatEncoder
+ from .decoder_gs import SLatGaussianDecoder
+ from .decoder_rf import SLatRadianceFieldDecoder
+-from .decoder_mesh import SLatMeshDecoder
++#from .decoder_mesh import SLatMeshDecoder
+diff --git a/trellis/pipelines/base.py b/trellis/pipelines/base.py
+index 3a9e0df..59fb6fc 100644
+--- a/trellis/pipelines/base.py
++++ b/trellis/pipelines/base.py
+@@ -36,6 +36,7 @@ class Pipeline:
+         with open(config_file, 'r') as f:
+             args = json.load(f)['args']
+ 
++        del args['models']['slat_decoder_mesh'] # because we don't use it, don't install kaolin
+         _models = {
+             k: models.from_pretrained(f"{path}/{v}")
+             for k, v in args['models'].items()
+diff --git a/trellis/pipelines/trellis_image_to_3d.py b/trellis/pipelines/trellis_image_to_3d.py
+index fd72ac6..462bb4a 100644
+--- a/trellis/pipelines/trellis_image_to_3d.py
++++ b/trellis/pipelines/trellis_image_to_3d.py
+@@ -105,12 +105,26 @@ class TrellisImageTo3DPipeline(Pipeline):
+         output_np = np.array(output)
+         alpha = output_np[:, :, 3]
+         bbox = np.argwhere(alpha > 0.8 * 255)
+-        bbox = np.min(bbox[:, 1]), np.min(bbox[:, 0]), np.max(bbox[:, 1]), np.max(bbox[:, 0])
+-        center = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
+-        size = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
+-        size = int(size * 1.2)
+-        bbox = center[0] - size // 2, center[1] - size // 2, center[0] + size // 2, center[1] + size // 2
+-        output = output.crop(bbox)  # type: ignore
++        try:
++            bbox = (
++                np.min(bbox[:, 1]),
++                np.min(bbox[:, 0]),
++                np.max(bbox[:, 1]),
++                np.max(bbox[:, 0]),
++            )
++            center = (bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2
++            size = max(bbox[2] - bbox[0], bbox[3] - bbox[1])
++            size = int(size * 1.2)
++            assert size > 0
++            bbox = (
++                center[0] - size // 2,
++                center[1] - size // 2,
++                center[0] + size // 2,
++                center[1] + size // 2,
++            )
++            output = output.crop(bbox)  # type: ignore
++        except AssertionError:
++            pass
+         output = output.resize((518, 518), Image.Resampling.LANCZOS)
+         output = np.array(output).astype(np.float32) / 255
+         output = output[:, :, :3] * output[:, :, 3:4]
+@@ -279,5 +293,14 @@ class TrellisImageTo3DPipeline(Pipeline):
+         cond = self.get_cond([image])
+         torch.manual_seed(seed)
+         coords = self.sample_sparse_structure(cond, num_samples, sparse_structure_sampler_params)
++        count = 0
++        # sometimes, coords ends up being empty, so we retry
++        while coords.shape[0] == 0:
++            count += 1
++            coords = self.sample_sparse_structure(
++                cond, num_samples, sparse_structure_sampler_params
++            )
++            if count > 20:
++                raise ValueError("No valid samples")
+         slat = self.sample_slat(cond, coords, slat_sampler_params)
+         return self.decode_slat(slat, formats)
+-- 
+2.43.0
+

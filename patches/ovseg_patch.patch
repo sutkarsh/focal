@@ -1,0 +1,270 @@
+From e1dadf70ea0f254e36c50174744ce076e5e8f69f Mon Sep 17 00:00:00 2001
+From: Ryan Feng <rtfeng@umich.edu>
+Date: Sun, 31 Aug 2025 01:19:57 -0400
+Subject: [PATCH] patch
+
+---
+ open_vocab_seg/ovseg_model.py     | 156 ++++++++++++++++++++++++++++++
+ open_vocab_seg/utils/predictor.py |  58 ++++++++++-
+ 2 files changed, 211 insertions(+), 3 deletions(-)
+
+diff --git a/open_vocab_seg/ovseg_model.py b/open_vocab_seg/ovseg_model.py
+index 48df931..2b20bcf 100644
+--- a/open_vocab_seg/ovseg_model.py
++++ b/open_vocab_seg/ovseg_model.py
+@@ -424,6 +424,162 @@ class OVSegDEMO(MaskFormer):
+         return processed_results
+ 
+ 
++    def get_classification(self, batched_inputs):
++        """
++        Args:
++            batched_inputs: a list, batched outputs of :class:`DatasetMapper`.
++                Each item in the list contains the inputs for one image.
++                For now, each item in the list is a dict that contains:
++                   * "image": Tensor, image in (C, H, W) format.
++                   * "instances": per-region ground truth
++                   * Other information that's included in the original dicts, such as:
++                     "height", "width" (int): the output resolution of the model (may be different
++                     from input resolution), used in inference.
++        Returns:
++            list[dict]:
++                each dict has the results for one image. The dict contains the following keys:
++
++                * "sem_seg":
++                    A Tensor that represents the
++                    per-pixel segmentation prediced by the head.
++                    The prediction has shape KxHxW that represents the logits of
++                    each class for each pixel.
++                * "panoptic_seg":
++                    A tuple that represent panoptic output
++                    panoptic_seg (Tensor): of shape (height, width) where the values are ids for each segment.
++                    segments_info (list[dict]): Describe each segment in `panoptic_seg`.
++                        Each dict contains keys "id", "category_id", "isthing".
++        """
++        images = [x["image"].to(self.device) for x in batched_inputs]
++        images = [(x - self.pixel_mean) / self.pixel_std for x in images]
++        images = ImageList.from_tensors(images, self.size_divisibility)
++
++        features = self.backbone(images.tensor)
++        outputs = self.sem_seg_head(features)
++        class_names = batched_inputs[0]["class_names"]
++        if len(class_names) == 1:
++            # Because classification is performed in a 'contrastive' manner, adding others to represent other concepts
++            class_names.append("others")
++        text_features = self.clip_adapter.get_text_features(class_names)
++        outputs["pred_logits"] = self.clip_adapter.get_sim_logits(
++            text_features, self.clip_adapter.normalize_feature(outputs["pred_logits"])
++        )
++        mask_cls_results = outputs["pred_logits"]
++        mask_pred_results = outputs["pred_masks"]
++        # upsample masks
++        mask_pred_results = F.interpolate(
++            mask_pred_results,
++            size=(images.tensor.shape[-2], images.tensor.shape[-1]),
++            mode="bilinear",
++            align_corners=False,
++        )
++
++        processed_results = []
++        for mask_cls_result, mask_pred_result, input_per_image, image_size in zip(
++            mask_cls_results, mask_pred_results, batched_inputs, images.image_sizes
++        ):
++            height = image_size[0]
++            width = image_size[1]
++            mask_pred_result = sem_seg_postprocess(
++                mask_pred_result, image_size, height, width
++            )
++            image = input_per_image["image"].to(self.device)
++
++            cls_preds = self.demo_classification(
++                mask_cls_result, mask_pred_result, image, class_names
++            )
++            processed_results.append(cls_preds)
++
++        return processed_results
++
++    def get_classification_clip(self, batched_inputs):
++        """
++        Args:
++            batched_inputs: a list, batched outputs of :class:`DatasetMapper`.
++                Each item in the list contains the inputs for one image.
++                For now, each item in the list is a dict that contains:
++                   * "image": Tensor, image in (C, H, W) format.
++                   * "instances": per-region ground truth
++                   * Other information that's included in the original dicts, such as:
++                     "height", "width" (int): the output resolution of the model (may be different
++                     from input resolution), used in inference.
++        Returns:
++            list[dict]:
++                each dict has the results for one image. The dict contains the following keys:
++
++                * "sem_seg":
++                    A Tensor that represents the
++                    per-pixel segmentation prediced by the head.
++                    The prediction has shape KxHxW that represents the logits of
++                    each class for each pixel.
++                * "panoptic_seg":
++                    A tuple that represent panoptic output
++                    panoptic_seg (Tensor): of shape (height, width) where the values are ids for each segment.
++                    segments_info (list[dict]): Describe each segment in `panoptic_seg`.
++                        Each dict contains keys "id", "category_id", "isthing".
++        """
++        images = [x["image"].to(self.device) for x in batched_inputs]
++        images = [(x - self.pixel_mean) / self.pixel_std for x in images]
++        images = ImageList.from_tensors(images, self.size_divisibility)
++
++        class_names = batched_inputs[0]["class_names"]
++        if len(class_names) == 1:
++            # Because classification is performed in a 'contrastive' manner, adding others to represent other concepts
++            class_names.append("others")
++
++        mask_pred_results = torch.ones(
++            (len(batched_inputs), 2, images.tensor.shape[-2], images.tensor.shape[-1]),
++            device=self.device,
++        )  # to deal with an internal squeeze
++
++        processed_results = []
++        for mask_pred_result, input_per_image, image_size in zip(
++            mask_pred_results, batched_inputs, images.image_sizes
++        ):
++            height = image_size[0]
++            width = image_size[1]
++            mask_pred_result = sem_seg_postprocess(
++                mask_pred_result, image_size, height, width
++            )
++            image = input_per_image["image"].to(self.device)
++
++            cls_preds = self.demo_classification(
++                torch.zeros((len(batched_inputs), len(class_names) + 1)),
++                mask_pred_result,
++                image,
++                class_names,
++            )
++            processed_results.append(cls_preds)
++
++        return processed_results
++
++    def demo_classification(self, mask_cls, mask_pred, image, class_names):
++        mask_cls = F.softmax(mask_cls, dim=-1)[..., :-1]
++        mask_pred = mask_pred.sigmoid()
++
++        if self.clip_ensemble:
++            clip_cls_logits, _, valid_flag = self.clip_adapter(
++                image, class_names, mask_pred, normalize=True
++            )
++            if clip_cls_logits is None:
++                clip_cls_logits = torch.empty(
++                    0, mask_cls.shape[-1] + 1, device=self.device
++                )
++            clip_cls = F.softmax(clip_cls_logits[:, :-1], dim=-1)
++            clip_cls_logits = clip_cls_logits[:, :-1]
++            if self.clip_ensemble_weight > 0:
++                map_back_clip_cls = mask_cls.new_ones(mask_cls.shape)
++                map_back_clip_cls[valid_flag] = clip_cls
++                mask_cls = torch.pow(
++                    mask_cls, 1 - self.clip_ensemble_weight
++                ) * torch.pow(map_back_clip_cls, self.clip_ensemble_weight)
++
++            else:
++                mask_cls = clip_cls
++                mask_pred = mask_pred[valid_flag]
++                mask_cls_logits = clip_cls_logits
++
++        return mask_cls_logits[0]
+ 
+ 
+     def demo_inference(self, mask_cls, mask_pred, image, class_names):
+diff --git a/open_vocab_seg/utils/predictor.py b/open_vocab_seg/utils/predictor.py
+index bb5b90b..7ccde23 100644
+--- a/open_vocab_seg/utils/predictor.py
++++ b/open_vocab_seg/utils/predictor.py
+@@ -33,9 +33,38 @@ class OVSegPredictor(DefaultPredictor):
+             image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
+ 
+             inputs = {"image": image, "height": height, "width": width, "class_names": class_names}
+-            predictions = self.model([inputs])[0]
++            predictions = self.model.get_classification([inputs])
+             return predictions
+ 
++    def clip(self, original_image, class_names):
++        """
++        Args:
++            original_image (np.ndarray): an image of shape (H, W, C) (in BGR order).
++
++        Returns:
++            predictions (dict):
++                the output of the model for one image only.
++                See :doc:`/tutorials/models` for details about the format.
++        """
++        with torch.no_grad():  # https://github.com/sphinx-doc/sphinx/issues/4258
++            # Apply pre-processing to image.
++            if self.input_format == "RGB":
++                # whether the model expects BGR inputs or RGB
++                original_image = original_image[:, :, ::-1]
++            height, width = original_image.shape[:2]
++            image = self.aug.get_transform(original_image).apply_image(original_image)
++            image = torch.as_tensor(image.astype("float32").transpose(2, 0, 1))
++
++            inputs = {
++                "image": image,
++                "height": height,
++                "width": width,
++                "class_names": class_names,
++            }
++            predictions = self.model.get_classification_clip([inputs])
++            return predictions
++
++
+ class OVSegVisualizer(Visualizer):
+     def __init__(self, img_rgb, metadata=None, scale=1.0, instance_mode=ColorMode.IMAGE, class_names=None):
+         super().__init__(img_rgb, metadata, scale, instance_mode)
+@@ -80,7 +109,6 @@ class OVSegVisualizer(Visualizer):
+         return self.output
+ 
+ 
+-
+ class VisualizationDemo(object):
+     def __init__(self, cfg, instance_mode=ColorMode.IMAGE, parallel=False):
+         """
+@@ -103,6 +131,30 @@ class VisualizationDemo(object):
+         else:
+             self.predictor = OVSegPredictor(cfg)
+ 
++    def get_classification(self, image, class_names):
++        """
++        Args:
++            image (np.ndarray): an image of shape (H, W, C) (in BGR order).
++                This is the format used by OpenCV.
++        Returns:
++            predictions (dict): the output of the model.
++            vis_output (VisImage): the visualized image output.
++        """
++        predictions = self.predictor(image, class_names)
++        return predictions
++
++    def get_classification_clip(self, image, class_names):
++        """
++        Args:
++            image (np.ndarray): an image of shape (H, W, C) (in BGR order).
++                This is the format used by OpenCV.
++        Returns:
++            predictions (dict): the output of the model.
++            vis_output (VisImage): the visualized image output.
++        """
++        predictions = self.predictor.clip(image, class_names)
++        return predictions
++
+     def run_on_image(self, image, class_names):
+         """
+         Args:
+@@ -129,4 +181,4 @@ class VisualizationDemo(object):
+         else:
+             raise NotImplementedError
+ 
+-        return predictions, vis_output
+\ No newline at end of file
++        return predictions, vis_output
+-- 
+2.43.0
+

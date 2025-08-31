@@ -1,0 +1,408 @@
+From c5854b13ce725374bc6b15c3a2b4a3d1d8374b29 Mon Sep 17 00:00:00 2001
+From: Ryan Feng <rtfeng@umich.edu>
+Date: Sun, 31 Aug 2025 01:35:13 -0400
+Subject: [PATCH] patch
+
+---
+ scripts/rendering/blender_script.py |  99 +++++++++++++++++-----
+ scripts/rendering/main.py           | 123 +++++++++++++++++++---------
+ 2 files changed, 163 insertions(+), 59 deletions(-)
+
+diff --git a/scripts/rendering/blender_script.py b/scripts/rendering/blender_script.py
+index 7475cdf..bb448eb 100644
+--- a/scripts/rendering/blender_script.py
++++ b/scripts/rendering/blender_script.py
+@@ -92,12 +92,16 @@ def _sample_spherical(
+     return vec
+ 
+ 
++# Modified to accept a camera location
+ def randomize_camera(
+     radius_min: float = 1.5,
+     radius_max: float = 2.2,
+     maxz: float = 2.2,
+     minz: float = -2.2,
+     only_northern_hemisphere: bool = False,
++    cam_x: float = -100000000,
++    cam_y: float = -100000000,
++    cam_z: float = -100000000,
+ ) -> bpy.types.Object:
+     """Randomizes the camera location and rotation inside of a spherical shell.
+ 
+@@ -115,23 +119,33 @@ def randomize_camera(
+     Returns:
+         bpy.types.Object: The camera object.
+     """
+-
+-    x, y, z = _sample_spherical(
+-        radius_min=radius_min, radius_max=radius_max, maxz=maxz, minz=minz
+-    )
+-    camera = bpy.data.objects["Camera"]
++    if cam_x < -100000 or cam_y < -100000 or cam_z < -100000:
++        x, y, z = _sample_spherical(
++            radius_min=radius_min, radius_max=radius_max, maxz=maxz, minz=minz
++        )
++    else:
++        x, y, z = cam_x, cam_y, cam_z
+ 
+     # only positive z
+     if only_northern_hemisphere:
+         z = abs(z)
+ 
+-    camera.location = Vector(np.array([x, y, z]))
++    new_location = Vector(np.array([x, y, z]))
+ 
+-    direction = -camera.location
++    direction = -new_location
+     rot_quat = direction.to_track_quat("-Z", "Y")
+-    camera.rotation_euler = rot_quat.to_euler()
+ 
+-    return camera
++    # Create a new camera with default properties
++    bpy.ops.object.camera_add(location=new_location, rotation=rot_quat.to_euler())
++
++    # Rename the new camera to 'NewDefaultCamera'
++    new_camera = bpy.context.active_object
++    new_camera.name = "Camera"
++
++    # Set the new camera as the active camera for the scene
++    bpy.context.scene.camera = new_camera
++    bpy.context.view_layer.update()
++    return new_camera
+ 
+ 
+ def _set_camera_at_size(i: int, scale: float = 1.5) -> bpy.types.Object:
+@@ -201,7 +215,8 @@ def _create_light(
+     return light_object
+ 
+ 
+-def randomize_lighting() -> Dict[str, bpy.types.Object]:
++# Modified to enable fixing the lighting to make it constant
++def randomize_lighting(fix_lighting) -> Dict[str, bpy.types.Object]:
+     """Randomizes the lighting in the scene.
+ 
+     Returns:
+@@ -214,40 +229,44 @@ def randomize_lighting() -> Dict[str, bpy.types.Object]:
+     bpy.ops.object.select_by_type(type="LIGHT")
+     bpy.ops.object.delete()
+ 
++    energy = random.choice([3, 4, 5]) if not fix_lighting else 4
+     # Create key light
+     key_light = _create_light(
+         name="Key_Light",
+         light_type="SUN",
+         location=(0, 0, 0),
+         rotation=(0.785398, 0, -0.785398),
+-        energy=random.choice([3, 4, 5]),
++        energy=energy,
+     )
+ 
++    energy = random.choice([2, 3, 4]) if not fix_lighting else 3
+     # Create fill light
+     fill_light = _create_light(
+         name="Fill_Light",
+         light_type="SUN",
+         location=(0, 0, 0),
+         rotation=(0.785398, 0, 2.35619),
+-        energy=random.choice([2, 3, 4]),
++        energy=energy,
+     )
+ 
++    energy = random.choice([3, 4, 5]) if not fix_lighting else 4
+     # Create rim light
+     rim_light = _create_light(
+         name="Rim_Light",
+         light_type="SUN",
+         location=(0, 0, 0),
+         rotation=(-0.785398, 0, -3.92699),
+-        energy=random.choice([3, 4, 5]),
++        energy=energy,
+     )
+ 
++    energy = random.choice([1, 2, 3]) if not fix_lighting else 2
+     # Create bottom light
+     bottom_light = _create_light(
+         name="Bottom_Light",
+         light_type="SUN",
+         location=(0, 0, 0),
+         rotation=(3.14159, 0, 0),
+-        energy=random.choice([1, 2, 3]),
++        energy=energy,
+     )
+ 
+     return dict(
+@@ -435,6 +454,7 @@ def delete_invisible_objects() -> None:
+         bpy.data.collections.remove(col)
+ 
+ 
++# modified to set the scale to 1 if a zero sized bounding box is found
+ def normalize_scene() -> None:
+     """Normalizes the scene by scaling and translating it to fit in a unit cube centered
+     at the origin.
+@@ -458,7 +478,10 @@ def normalize_scene() -> None:
+                 obj.parent = parent_empty
+ 
+     bbox_min, bbox_max = scene_bbox()
+-    scale = 1 / max(bbox_max - bbox_min)
++    try:
++        scale = 1 / max(bbox_max - bbox_min)
++    except ZeroDivisionError:
++        scale = 1
+     for obj in get_scene_root_objects():
+         obj.scale = obj.scale * scale
+ 
+@@ -730,11 +753,16 @@ class MetadataExtractor:
+         }
+ 
+ 
++# modified to accept additional parameters fix_lighting, cam_x, cam_y, cam_z
+ def render_object(
+     object_file: str,
+     num_renders: int,
+     only_northern_hemisphere: bool,
+     output_dir: str,
++    fix_lighting: bool,
++    cam_x: List[float],
++    cam_y: List[float],
++    cam_z: List[float],
+ ) -> None:
+     """Saves rendered images with its camera matrix and metadata of the object.
+ 
+@@ -774,7 +802,7 @@ def render_object(
+     empty = bpy.data.objects.new("Empty", None)
+     scene.collection.objects.link(empty)
+     cam_constraint.target = empty
+-
++    #
+     # Extract the metadata. This must be done before normalizing the scene to get
+     # accurate bounding box information.
+     metadata_extractor = MetadataExtractor(
+@@ -808,23 +836,33 @@ def render_object(
+     normalize_scene()
+ 
+     # randomize the lighting
+-    randomize_lighting()
++    # modified to pass in the fix_lighting flag
++    randomize_lighting(fix_lighting=fix_lighting)
+ 
+     # render the images
+-    for i in range(num_renders):
++    # modified to iterate over the passed in camera locations and save out filenames
++    # that list the camera location
++    for this_cam_x, this_cam_y, this_cam_z in zip(cam_x, cam_y, cam_z):
+         # set camera
+         camera = randomize_camera(
+             only_northern_hemisphere=only_northern_hemisphere,
++            cam_x=this_cam_x,
++            cam_y=this_cam_y,
++            cam_z=this_cam_z,
+         )
+ 
+         # render the image
+-        render_path = os.path.join(output_dir, f"{i:03d}.png")
++        render_path = os.path.join(
++            output_dir, f"{this_cam_x:.2f}_{this_cam_y:.2f}_{this_cam_z:.2f}.png"
++        )
+         scene.render.filepath = render_path
+         bpy.ops.render.render(write_still=True)
+ 
+         # save camera RT matrix
+         rt_matrix = get_3x4_RT_matrix_from_blender(camera)
+-        rt_matrix_path = os.path.join(output_dir, f"{i:03d}.npy")
++        rt_matrix_path = os.path.join(
++            output_dir, f"{this_cam_x:.2f}_{this_cam_y:.2f}_{this_cam_z:.2f}.npy"
++        )
+         np.save(rt_matrix_path, rt_matrix)
+ 
+ 
+@@ -860,6 +898,22 @@ if __name__ == "__main__":
+         default=12,
+         help="Number of renders to save of the object.",
+     )
++    # modified to add new parameters fix_lighting, cam_x, cam_y, cam_z
++    parser.add_argument(
++        "--fix_lighting",
++        action="store_true",
++        default=False,
++        help="whether to fix lighting or not",
++    )
++    parser.add_argument(
++        "--cam_x", type=float, nargs="*", default=[-1], help="camera x location"
++    )
++    parser.add_argument(
++        "--cam_y", type=float, nargs="*", default=[-1], help="camera y location"
++    )
++    parser.add_argument(
++        "--cam_z", type=float, nargs="*", default=[-1], help="camera z location"
++    )
+     argv = sys.argv[sys.argv.index("--") + 1 :]
+     args = parser.parse_args(argv)
+ 
+@@ -891,9 +945,14 @@ if __name__ == "__main__":
+     ].preferences.compute_device_type = "CUDA"  # or "OPENCL"
+ 
+     # Render the images
++    # modified to pass in the new args fix_lighting, cam_x, cam_y, cam_z
+     render_object(
+         object_file=args.object_path,
+         num_renders=args.num_renders,
+         only_northern_hemisphere=args.only_northern_hemisphere,
+         output_dir=args.output_dir,
++        fix_lighting=args.fix_lighting,
++        cam_x=args.cam_x,
++        cam_y=args.cam_y,
++        cam_z=args.cam_z,
+     )
+diff --git a/scripts/rendering/main.py b/scripts/rendering/main.py
+index 64c8d07..1b77dd0 100644
+--- a/scripts/rendering/main.py
++++ b/scripts/rendering/main.py
+@@ -338,8 +338,19 @@ def get_example_objects() -> pd.DataFrame:
+     return pd.read_json("example-objects.json", orient="records")
+ 
+ 
++# modified to take in specific render args, save to a new default location,
++# and directly runs blender assuming the objects are already downloaded
+ def render_objects(
+-    render_dir: str = "~/.objaverse",
++    uids,
++    uid_to_label_map,
++    uid_to_object_paths,
++    root,
++    experiment_name,
++    cam_x,
++    cam_y,
++    cam_z,
++    random_lighting,
++    render_dir: str = "datasets/objaverse",
+     download_dir: Optional[str] = None,
+     num_renders: int = 12,
+     processes: Optional[int] = None,
+@@ -399,12 +410,6 @@ def render_objects(
+     if processes is None:
+         processes = multiprocessing.cpu_count() * 3
+ 
+-    # get the objects to render
+-    objects = get_example_objects()
+-    objects.iloc[0]["fileIdentifier"]
+-    objects = objects.copy()
+-    logger.info(f"Provided {len(objects)} objects to render.")
+-
+     # get the already rendered objects
+     fs, path = fsspec.core.url_to_fs(render_dir)
+     try:
+@@ -416,39 +421,79 @@ def render_objects(
+     saved_ids = set(zip_file.split("/")[-1].split(".")[0] for zip_file in zip_files)
+     logger.info(f"Found {len(saved_ids)} objects already rendered.")
+ 
++    ####
+     # filter out the already rendered objects
+-    objects["saveUid"] = objects["fileIdentifier"].apply(get_uid_from_str)
+-    objects = objects[~objects["saveUid"].isin(saved_ids)]
+-    objects = objects.reset_index(drop=True)
+-    logger.info(f"Rendering {len(objects)} new objects.")
+-
+-    # shuffle the objects
+-    objects = objects.sample(frac=1).reset_index(drop=True)
+-
+-    oxl.download_objects(
+-        objects=objects,
+-        processes=processes,
+-        save_repo_format=save_repo_format,
+-        download_dir=download_dir,
+-        handle_found_object=partial(
+-            handle_found_object,
+-            render_dir=render_dir,
+-            num_renders=num_renders,
+-            only_northern_hemisphere=only_northern_hemisphere,
+-            gpu_devices=parsed_gpu_devices,
+-            render_timeout=render_timeout,
+-        ),
+-        handle_new_object=handle_new_object,
+-        handle_modified_object=partial(
+-            handle_modified_object,
+-            render_dir=render_dir,
+-            num_renders=num_renders,
+-            only_northern_hemisphere=only_northern_hemisphere,
+-            gpu_devices=parsed_gpu_devices,
+-            render_timeout=render_timeout,
+-        ),
+-        handle_missing_object=handle_missing_object,
+-    )
++    target_dirs = []
++    for uid in uids:
++        saved_id = uid_to_label_map[uid] + "_" + experiment_name + "_" + uid
++        if saved_id in saved_ids:
++            continue
++        args = f"--object_path '{os.path.join(root, uid_to_object_paths[uid])}' --num_renders {num_renders}"
++
++        # get the GPU to use for rendering
++        using_gpu: bool = True
++        gpu_i = 0
++        if isinstance(parsed_gpu_devices, int) and parsed_gpu_devices > 0:
++            num_gpus = parsed_gpu_devices
++            gpu_i = random.randint(0, num_gpus - 1)
++        elif isinstance(parsed_gpu_devices, list):
++            gpu_i = random.choice(parsed_gpu_devices)
++        elif isinstance(parsed_gpu_devices, int) and parsed_gpu_devices == 0:
++            using_gpu = False
++        else:
++            raise ValueError(
++                f"parsed_gpu_devices must be an int > 0, 0, or a list of ints. Got {parsed_gpu_devices}."
++            )
++
++        if not random_lighting:
++            args += " --fix_lighting"
++        cam_x_str = " ".join(f"{x:.5f}" for x in cam_x)
++        cam_y_str = " ".join(f"{x:.5f}" for x in cam_y)
++        cam_z_str = " ".join(f"{x:.5f}" for x in cam_z)
++        # cam_y_str = " ".join(str(x) for x in cam_y)
++        # cam_z_str = " ".join(str(x) for x in cam_z)
++        args += f" --cam_x {cam_x_str} --cam_y {cam_y_str} --cam_z {cam_z_str}"
++
++        target_directory = os.path.join(path, "renders", saved_id)
++        os.makedirs(target_directory, exist_ok=True)
++        args += f" --output_dir '{target_directory}'"
++        target_dirs.append(target_directory)
++
++        # check for Linux / Ubuntu or MacOS
++        if platform.system() == "Linux" and using_gpu:
++            args += " --engine BLENDER_EEVEE"
++        elif platform.system() == "Darwin" or (
++            platform.system() == "Linux" and not using_gpu
++        ):
++            # As far as I know, MacOS does not support BLENER_EEVEE, which uses GPU
++            # rendering. Generally, I'd only recommend using MacOS for debugging and
++            # small rendering jobs, since CYCLES is much slower than BLENDER_EEVEE.
++            args += " --engine CYCLES"
++        else:
++            raise NotImplementedError(f"Platform {platform.system()} is not supported.")
++
++        # check if we should only render the northern hemisphere
++        if only_northern_hemisphere:
++            args += " --only_northern_hemisphere"
++
++        # get the command to run
++        command = f"blender-3.2.2-linux-x64/blender --background --python third_party_modified/objaverse_xl/scripts/rendering/blender_script.py -- {args}"
++        if using_gpu:
++            command = f"export DISPLAY=:1.{gpu_i} && {command}"
++        print(command)
++
++        # render the object (put in dev null)
++        subprocess.run(
++            ["bash", "-c", command],
++            timeout=render_timeout * 10,
++            check=False,
++            stdout=subprocess.DEVNULL,
++            stderr=subprocess.DEVNULL,
++            # stdout=sys.stdout,
++            # stderr=sys.stderr
++            # stdout=subprocess.DEVNULL,
++        )
++    return target_dirs
+ 
+ 
+ if __name__ == "__main__":
+-- 
+2.43.0
+
