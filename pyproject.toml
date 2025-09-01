@@ -3,7 +3,7 @@ name = "focal"
 version = "0.1.0"
 description = "Official implementation for Focal ICML 2025 paper."
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = "==3.10.*"
 dependencies = [
     "accelerate>=1.8.1",
     "bayesian-optimization==1.5.1",
