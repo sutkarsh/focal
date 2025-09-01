@@ -1,0 +1,25 @@
+Copyright (c) 2025 Regents of the University of Michigan and University of California, Berkeley
+Authors: Utkarsh Singhal, Ryan Feng, Stella X. Yu, Atul Prakash
+
+This repository includes contributions as patch files in patches/ from the following projects:
+
+1. TRELLIS (Structured 3D Latents for Scalable and Versatile Generation)
+   - Authors: Jianfeng Xiang, Zelong Lv, Sicheng Xu, Yu Deng, Ruicheng Wang, Bowen Zhang, Dong Chen, Xin Tong, Jialong Yang
+   - Source: https://github.com/microsoft/TRELLIS
+   - License: MIT License
+
+2. Objaverse-XL (Objaverse-XL: A Universe of 10M+ 3D Objects)
+   - Authors: Matt Deitke, Ruoshi Liu, Matthew Wallingford, Huong Ngo, Oscar Michel, Aditya Kusupati, Alan Fan, Christian Laforte, Vikram Voleti, Samir Yitzhak Gadre, Eli VanderBilt, Aniruddha Kembhavi, Carl Vondrick, Georgia Gkioxari, Kiana Ehsani, Ludwig Schmidt, Ali Farhadi
+   - Source: https://github.com/allenai/objaverse-xl
+   - License: Apache License 2.0
+
+3. OVSeg (Open-Vocabulary Semantic Segmentation with Mask-adapted CLIP)
+   - Authors: Feng Liang, Bichen Wu, Xiaoliang Dai, Kunpeng Li, Yinan Zhao, Hang Zhang, Peizhao Zhang, Peter Vajda, Diana Marculescu
+   - Source: https://github.com/facebookresearch/ov-seg
+   - License: CC BY-NC 4.0
+
+
+Note: The OVSeg patch in patches/cc_by_nc/ is licensed under CC BY-NC 4.0 and may not be used in commercial products.
+
+Please refer to the respective project repositories for full licensing details and attribution requirements.
+

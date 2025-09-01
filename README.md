@@ -14,7 +14,7 @@ This is the official repository for the paper "Test-Time Canonicalization by Fou
 
 ![FoCal](media/focal_teaser.png)
 
-## Basic organization:
+## Basic Organization:
 - Each task is a python script of its own (in `experiments/` folder)
 - Each python file imports from `focal/utils`, which contain most of the dependencies and library code.
 - In particular, `focal/utils/energy.py` contains the energy function used for optimization.
@@ -64,36 +64,62 @@ unzip 360_v2.zip -d data
 ```
 
 ### 3D Viewpoints
-In order to run 3D viewpoint experiments, you need to install detectron2 and TRELLIS. You also need to download and install patches for [Objaverse](https://github.com/allenai/objaverse-xl/tree/main), [TRELLIS](https://github.com/microsoft/TRELLIS.git), and [OVSeg](https://github.com/facebookresearch/ov-seg/tree/main) as part of the process in `scripts/download_3D_libraries.sh`:
+To run 3D viewpoint experiments, you need to install detectron2 and TRELLIS. You also need to download and install patches for [Objaverse](https://github.com/allenai/objaverse-xl/tree/main) (Apache 2.0), [TRELLIS](https://github.com/microsoft/TRELLIS.git) (MIT), and [OVSeg](https://github.com/facebookresearch/ov-seg/tree/main) (CC By-NC). Please refer to `Licenses and Third Parties` for more information.
 
+#### Install
 ```
 conda create -n focal_3d python=3.10
 conda activate focal_3d
 pip install -r requirements.txt
 ./scripts/download_3D_libraries.sh
+
+### Apply OVSeg patch manually.
+cd third_party_modified;
+git clone https://github.com/facebookresearch/ov-seg.git
+cd ov-seg;
+git checkout 36f49d496714998058d115ffb6172d9d84c59065
+git apply ../../patches/cc_by_nc/ovseg_patch.patch
+cd ..;
+mv ov-seg ovseg;
+cd ..;
+pip install -Ue third_party_modified/ovseg/third_party/CLIP/.
 ```
+
+#### OVSeg (Classifier) Setup
 
 The OVSeg checkpoint also needs to be downloaded from their Google Drive: [https://drive.google.com/file/d/1cn-ohxgXDrDfkzC1QdO-fi8IjbjXmgKy/view](https://drive.google.com/file/d/1cn-ohxgXDrDfkzC1QdO-fi8IjbjXmgKy/view). Place it at: `./third_party/ovseg/ovseg_swinbase_vitL14_ft_mpt.pth`.
 
-CO3D data would also have to be donwloaded from `https://ai.meta.com/datasets/co3d-downloads/` to run on CO3D. Structure should be: `datasets/co3d/orig/<class>/<uid>` when done.
+#### Objaverse (Dataset) Setup
+To run experiments on Objaverse, the dataset needs to be downloaded and filtered. To do so, install Blender and start the xserver (if on a headless server) as described in [https://github.com/allenai/objaverse-xl/tree/main/scripts/rendering](https://github.com/allenai/objaverse-xl/tree/main/scripts/rendering):
 
-For both Objaverse and CO3D, the datasets need to be filtered. Note that for CO3D, you need to export an OpenAI key, and for Objaverse, you have to install Blender and start the xserver as described in their repo ([https://github.com/allenai/objaverse-rendering](https://github.com/allenai/objaverse-rendering)):
 ```
+# Blender / xserver install
+wget https://download.blender.org/release/Blender3.2/blender-3.2.2-linux-x64.tar.xz && \
+  tar -xf blender-3.2.2-linux-x64.tar.xz && \
+  rm blender-3.2.2-linux-x64.tar.xz
+sudo apt-get install xserver-xorg -y && \
+  sudo python3 start_x_server.py start
+
+# Filter
 python3 -m scripts.viewpoint_3D_process_objaverse
+```
+
+#### CO3D (Dataset) Setup
+To run experiments on CO3D, the dataset needs to be downloaded and filtered. To download the data, download it from `https://ai.meta.com/datasets/co3d-downloads/`. Structure should be: `datasets/co3d/orig/<class>/<uid>` when done. To filter, export an OpenAI key and run the following:
+
+```
 export OPENAI_API_KEY="<your key>"
 python3 -m scripts.viewpoint_3D_process_co3d
 ```
 
-To run the experiments after filtering:
+#### Run Experiments
 ```
-python3 -m experiments.viewpoint_3D --mode rank --canon_2d_pattern 0 --dataset objaverse
-python3 -m experiments.viewpoint_3D --mode gt_prob --canon_2d_pattern 5 --dataset objaverse
-python3 -m experiments.viewpoint_3D --mode gt_prob --canon_2d_pattern 5 --dataset co3d 
+python3 -m experiments.viewpoint_3D --mode rank --canon_2d_pattern 0 --dataset objaverse  # Fig. 5
+python3 -m experiments.viewpoint_3D --mode gt_prob --canon_2d_pattern 5 --dataset objaverse  # Fig. 12
+python3 -m experiments.viewpoint_3D --mode gt_prob --canon_2d_pattern 5 --dataset co3d  # Fig. 6
 ```
 
-Note that we ship modified copies of a few libraries in `third_party_modified` along with their appropriate licenses. We replaced the `README` in each sub-folder with a new one that discloses the changes made.
-
-## How to cite
+## How to Cite
 
 If you find this code useful in your research, please cite this paper:
 
@@ -114,3 +140,21 @@ This repo has been created and is maintained by
 
 - [Utkarsh Singhal](https://utkarsh.ai)
 - [Ryan Feng](https://websites.umich.edu/~rtfeng/)
+
+## Licenses and Third Parties
+### MIT-Licensed Code
+All original code in `confs/`, `experiments/`, `focal/`, `scripts/` is MIT-licensed. You may use, modify, and distribute it commercially.
+
+### Patch Files
+
+Some functionality requires patches for third-party libraries:
+
+1. **TRELLIS (MIT)** – can be used commercially.  
+2. **Objaverse (Apache 2.0)** (dataset) – can be used commercially with notices.  
+3. **OVSeg (CC BY-NC 4.0)** (classifier for 3D viewpoint experiments) – **non-commercial only**.
+
+Copies of their licenses / notices are included in `patches/`.
+
+> The CC BY-NC patch is located at `patches/cc_by_nc/ovseg_patch.patch`.  
+> Do **not** ship or include this patch in any commercial product.  
+> You may apply it manually for non-commercial purposes only.  
